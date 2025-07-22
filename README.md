@@ -11,10 +11,30 @@ API desarrollada con NestJS y TypeScript para gestionar reservas de habitaciones
 - JWT + Passport
 - Bcrypt
 
-## ⚙️ Funcionalidades
-- Registro y login de huéspedes
-- Gestión de habitaciones con control de disponibilidad
-- Creación, actualización y cancelación de reservas
-- Roles y protección de rutas (Guards + Decoradores personalizados)
-- Cifrado de contraseñas
-- Validación con DTOs y Pipes
+---
+
+## ⚙️ Funcionalidades principales
+
+- ✅ Registro y login de huéspedes
+- ✅ Autenticación con JWT y cifrado de contraseñas
+- ✅ Gestión de habitaciones (crear, listar, cambiar estado)
+- ✅ Crear, actualizar y cancelar reservas
+- ✅ Visualizar reservas del usuario autenticado
+- ✅ Protección de rutas con roles (admin, recepcionista)
+- ✅ Validación con DTOs y Pipes
+- ✅ Automatización de tareas con `@Cron` para liberar habitaciones expiradas
+
+
+
+---
+
+## 🧪 Endpoints principales
+
+| Método | Ruta                     | Descripción                            |
+|--------|--------------------------|----------------------------------------|
+| POST   | `/auth/login`            | Inicio de sesión y obtención de token  |
+| GET    | `/huespedes`             | Obtener huéspedes                      |
+| POST   | `/reservas/`              | Crear nueva reserva (autenticado)      |
+| GET    | `/reservas`              | Ver reservas del usuario autenticado   |
+| PATCH  | `/reservas/:id`          | Modificar fechas de una reserva        |
+| DELETE | `/reservas/:id`          | Cancelar reserva         
