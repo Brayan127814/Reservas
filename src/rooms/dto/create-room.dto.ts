@@ -7,6 +7,8 @@ export class CreateRoomDto {
 
     @IsNumber()
     numero: number
+    @IsNumber()
+    precio:number
 
     @IsString()
     @IsOptional()

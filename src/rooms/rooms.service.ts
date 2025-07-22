@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Room } from './entities/room.entity';
 import { Repository } from 'typeorm';
-import { NotFoundError } from 'rxjs';
+import { NotFoundError, throwError } from 'rxjs';
 
 @Injectable()
 export class RoomsService {
@@ -20,6 +20,19 @@ export class RoomsService {
     let limitRoom = 4
     let formatRoom = parseInt(`${createRoomDto.piso}01`)
     let maxRoomNumber = formatRoom + limitRoom - 1
+
+
+    //Contar habitaciones
+
+    const roomCount = await this.roomRepository.count({
+      where: { piso: createRoomDto.piso }
+    })
+
+    if (roomCount >= limitRoom) {
+      return {
+        message: `Limite de habitaciones en el piso ${createRoomDto.piso} alcanzado`
+      }
+    }
 
 
     if (createRoomDto.numero < formatRoom || createRoomDto.numero > maxRoomNumber) {
@@ -42,38 +55,93 @@ export class RoomsService {
       }
     }
 
-    //Contar habitaciones
-
-    const roomCount = await this.roomRepository.count({
-      where: { piso: createRoomDto.piso }
-    })
-
-    if (roomCount >= maxRoomNumber) {
-      return {
-        message: `Limite de habitaciones en el piso ${createRoomDto.piso} alcanzado`
-      }
-    }
 
 
-    const newRoom =  this.roomRepository.create(createRoomDto)
+    const newRoom = this.roomRepository.create(createRoomDto)
 
     return this.roomRepository.save(newRoom)
 
   }
 
-  findAll() {
-    return `This action returns all rooms`;
+  //otener las habitaciones disponibles
+  async findDisponibles(): Promise<Room[]> {
+
+    const rooms = this.roomRepository.find({
+      where: { estado: 'disponible' }
+    })
+
+    if (!rooms) {
+      throw new NotFoundException()
+    }
+    return rooms
+  }
+async findAll(): Promise<Room[]> {
+  try {
+    const rooms = await this.roomRepository.find();
+
+    if (rooms.length === 0) {
+      throw new NotFoundException('Lista de habitaciones vacía');
+    }
+
+    return rooms;
+
+  } catch (error) {
+    console.error('Error al obtener habitaciones:', error);
+
+    throw new InternalServerErrorException('Error interno al obtener habitaciones');
+  }
+}
+
+
+  async findOne(id: number) {
+
+    try {
+      const room = await this.roomRepository.findOne({
+        where: { id }
+      })
+
+      if (!room) {
+        throw new NotFoundException(`No se encontro la habitación con ID ${id}`)
+      }
+      return room
+
+    } catch (error) {
+      console.error('Error al buscar la habitación ', error)
+      if (error instanceof NotFoundException) {
+        throw error
+      }
+      throw new NotFoundException('Error interno del servidor')
+
+    }
+
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} room`;
+  async update(id: number, updateRoomDto: Partial<CreateRoomDto>) {
+
+    try {
+      const room = await this.roomRepository.findOne({ where: { id } })
+      if (!room) {
+        throw new NotFoundException(`No se encontro la habitación con ID ${id}`)
+
+      }
+      //Aplicar actualizacion
+
+      await this.roomRepository.update(id, updateRoomDto)
+      //Devolver habitación actualizada
+      return this.findOne(id)
+
+
+    } catch (error) {
+
+      console.error('Error al actualizar la habitacion ', error)
+
+      if (error instanceof NotFoundException) {
+        throw error
+      }
+      throw new InternalServerErrorException('Error interno del servidor')
+
+    }
   }
 
-  update(id: number, updateRoomDto: UpdateRoomDto) {
-    return `This action updates a #${id} room`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} room`;
-  }
+ 
 }

@@ -28,7 +28,7 @@ export class HuespedesService {
   //Obtener el email para el inicio de sesión
   async getEmailHuesped(email: string) {
     try {
-      const userEmail = this.huespedRepository.findOne({
+      const userEmail = await this.huespedRepository.findOne({
         where: { correo: email },
         relations: ['rol']
       })

@@ -12,8 +12,8 @@ import { Roles } from 'src/decorators/roles.decorators';
 export class HuespedesController {
   constructor(private readonly huespedesService: HuespedesService) {}
 
-  @UseGuards(JwtGuard,RolesGuard)
-  @Roles('admin','recepcionista')
+  // @UseGuards(JwtGuard,RolesGuard)
+  // @Roles('admin','recepcionista')
   
   @Post('addHuesped')
   create(@Body() createHuespedeDto: CreateHuespedeDto) {

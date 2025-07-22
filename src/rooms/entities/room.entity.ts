@@ -1,4 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+import { ESTADOHABITACION } from "src/enums/estado-habitacion.enum";
+import { Reserva } from "src/reservas/entities/reserva.entity";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable } from "typeorm";
 
 @Entity('rooms')
 export class Room {
@@ -9,10 +11,19 @@ export class Room {
     piso: number
     @Column()
     numero: number
+    
 
-    @Column({ type: 'varchar', default: 'disponible' })
+    @Column({type:'float'})
+    precio: number
+
+    @Column({ type: 'varchar', default: ESTADOHABITACION.DISPONIBLE })
     estado: string
     @Column()
     descripcion: string
 
+    @ManyToMany(()=> Reserva)
+    @JoinTable()
+    reservas:Reserva[]
+
+    
 }

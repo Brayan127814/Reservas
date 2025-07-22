@@ -4,8 +4,6 @@ import { AuthController } from './auth.controller';
 import { HuespedesModule } from 'src/huespedes/huespedes.module';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { CONFIGURABLE_MODULE_ID } from '@nestjs/common/module-utils/constants';
-import { strict } from 'assert';
 import { jwtStrategy } from './jwtAuth.strategy';
 
 @Module({
