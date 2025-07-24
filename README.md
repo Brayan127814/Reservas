@@ -52,6 +52,8 @@ API desarrollada con NestJS y TypeScript para gestionar reservas de habitaciones
 ## ✅ Registro y login de huéspedes
 - Registro de un huesped
 **Endpoint: http://localhost:4000/huesped/addHuesped**
+POST `/huesped`
+
 ```json
 {
  "nombre":"Daniel de jesus",
@@ -60,9 +62,10 @@ API desarrollada con NestJS y TypeScript para gestionar reservas de habitaciones
  "contraseña":"12345",
  "rol": 1
 }
-
-- Inicio de sesión
+```
+## Inicio de sesión
 **Endpoint: http://localhost:4000/auth/login**
+POST `/auth`
 
 ```json
 {
@@ -71,7 +74,11 @@ API desarrollada con NestJS y TypeScript para gestionar reservas de habitaciones
  "contraseña":"12345"
  
 }
-- Respuesta de inicio de sesíon
+```
+---
+
+
+## Respuesta de inicio de sesíon
 
 ```json
 {
