@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException, UsePipes } from '@nestjs/common';
 import { CreateReservaDto } from './dto/create-reserva.dto';
 import { UpdateReservaDto } from './dto/update-reserva.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,8 +10,8 @@ import { Huespedes } from 'src/huespedes/entities/huespede.entity';
 import { ESTADOHABITACION } from 'src/enums/estado-habitacion.enum';
 import { ESTADORESERVA } from 'src/enums/estado-reserva.enum';
 import { RelationIdAttribute } from 'typeorm/query-builder/relation-id/RelationIdAttribute';
-import { resolveSoa } from 'dns';
 import { Cron, CronExpression } from '@nestjs/schedule';
+
 @Injectable()
 export class ReservasService {
   constructor(
@@ -43,7 +43,7 @@ export class ReservasService {
       if (!huesped) {
         throw new NotFoundException('Huesped no encontrado')
       }
-      console.log(huesped)
+ 
 
       //Cambiar el estado de las habitaciones a ocupadas
 
@@ -129,8 +129,75 @@ export class ReservasService {
     return `This action returns a #${id} reserva`;
   }
   //Actualizar datos de la reserva
-  update(id: number, updateReservaDto: Partial<UpdateReservaDto>) {
-    return `This action updates a #${id} reserva`;
+  async update(id: number, updateReservaDto: Partial<UpdateReservaDto>, huespedID: number) {
+
+    try {
+
+      //buscar reservacion
+
+      const reserva = await this.reservaRepository.findOne({
+        where: {
+          id,
+          huesped: { id: huespedID },
+          
+        },
+        relations:['rooms','huesped']
+      })
+
+      if (!reserva) {
+        throw new NotFoundException('Rserva no no encontrada')
+      }
+
+      let hoy = new Date()
+      let newfechaInicio = updateReservaDto.fechaInicio ? new Date(updateReservaDto.fechaInicio) : null
+      let newFechaFin = updateReservaDto.fechaFin ? new Date(updateReservaDto.fechaFin) : null
+
+      if (newfechaInicio) {
+        if (newfechaInicio < hoy) {
+          throw new BadRequestException('la nueva fecha de inicio no puede ser anterior a hoy')
+        }
+      }
+
+      //validar que la fecha de finalizacion sea proporcionada
+
+      if (newFechaFin) {
+        if (newfechaInicio && newFechaFin <= newfechaInicio) {
+          throw new BadRequestException('La fecha de finalización no debe ser menor a la fecha de inicio')
+        }
+      }
+
+
+      // Al hacer esta actufalizacion de fechas se deba actualizar el total a pagar
+
+      // const cantidadNoches = Math.ceil((fechaFin.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24));
+      let cantidadNoches: number = 0
+      if (newfechaInicio && newFechaFin) {
+        cantidadNoches = Math.ceil((newFechaFin.getTime() - newfechaInicio.getTime()) / (100 * 60 * 60 * 24))
+      }
+
+      //Actualizar total
+
+      const newTotal = reserva.rooms.reduce((total, val) => {
+        return (total + (val.precio * cantidadNoches))
+      }, 0)
+
+      reserva.total = newTotal
+
+      //Guardar la actualizacion
+
+      Object.assign(reserva, updateReservaDto)
+
+      return this.reservaRepository.save(reserva)
+
+
+    } catch (error) {
+        console.log(error)
+      if (error instanceof HttpException) {
+        throw error
+      }
+      throw new HttpException('Error interno del servidor ', HttpStatus.INTERNAL_SERVER_ERROR)
+
+    }
 
   }
 
@@ -181,7 +248,7 @@ export class ReservasService {
   }
 
   //Reservas Expiradas
- @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async reservasExpiradas() {
     try {
       const expiradas = await this.reservaRepository.find({//ESTO VA A TRAER LAS RESERVAS CUYA FINALIZACIÓN HAYA ES MENOR A HOY

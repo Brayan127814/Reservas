@@ -19,16 +19,16 @@ export class ReservasController {
     return this.reservasService.create(createReservaDto, userId);
   }
   //Obtener todas las reservas del usuario autenticado
-  @UseGuards(JwtAuthGuar,RoleGuard)
-  @Roles('Huésped','Admin')
+  @UseGuards(JwtAuthGuar, RoleGuard)
+  @Roles('Huésped', 'Admin')
   @Get('allReservation')
   findAll(@Request() req: ExpressRequest & { user: { id: number } }) {
     return this.reservasService.findAll(req.user.id);
   }
 
   //Cancelar reservas
-  @UseGuards(JwtAuthGuar,RoleGuard)
-  @Roles('Admin','Huésped')
+  @UseGuards(JwtAuthGuar, RoleGuard)
+  @Roles('Admin', 'Huésped', 'recepcionista')
   @Patch('cancel/:id')  // esto es inválido
 
   async cancel(@Param('id') id: number, @Request() req: ExpressRequest & { user: { id: number } }) {
@@ -36,15 +36,18 @@ export class ReservasController {
     return this.reservasService.cancelReservation(id, userId)
 
   }
-
+  @UseGuards(JwtAuthGuar, RoleGuard)
+  @Roles('Admin', 'Huésped', 'recepcionista')
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.reservasService.findOne(+id);
   }
-
+  @UseGuards(JwtAuthGuar, RoleGuard)
+  @Roles('Admin', 'Huésped', 'recepcionista')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateReservaDto: UpdateReservaDto) {
-    return this.reservasService.update(+id, updateReservaDto);
+  update(@Param('id') id: string, @Body() updateReservaDto: UpdateReservaDto, @Request() req: ExpressRequest & { user: { id: number } }) {
+    let userId = req.user.id
+    return this.reservasService.update(+id, updateReservaDto, userId);
   }
 
   @Delete(':id')

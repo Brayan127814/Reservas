@@ -38,3 +38,46 @@ API desarrollada con NestJS y TypeScript para gestionar reservas de habitaciones
 | GET    | `/reservas`              | Ver reservas del usuario autenticado   |
 | PATCH  | `/reservas/:id`          | Modificar fechas de una reserva        |
 | DELETE | `/reservas/:id`          | Cancelar reserva         
+
+
+
+---
+
+
+## Autenticación
+- Todas las rutas protegidas requieren un token JWT.
+- El token debe enviarse en el header como: Authorization: Bearer <token>
+
+---
+## ✅ Registro y login de huéspedes
+- Registro de un huesped
+**Endpoint: http://localhost:4000/huesped/addHuesped**
+```json
+{
+ "nombre":"Daniel de jesus",
+ "apellido":"Castillo Ayala",
+ "correo":"daniel@gmail.com",
+ "contraseña":"12345",
+ "rol": 1
+}
+
+- Inicio de sesión
+**Endpoint: http://localhost:4000/auth/login**
+
+```json
+{
+
+ "correo":"daniel@gmail.com",
+ "contraseña":"12345"
+ 
+}
+- Respuesta de inicio de sesíon
+
+```json
+{
+    "message": "Exit",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjIsImNvcnJlbyI6ImRhbmllbEBnbWFpbC5jb20iLCJyb2wiOiJBZG1pbiIsImlhdCI6MTc1MzM4NTgwNywiZXhwIjoxNzUzMzg5NDA3fQ.lPDYu7vrqSSmo0nO7SjDOuh0RNdHTKDqfP3gHW46oQw",
+    "success": true
+}
+  
+  
