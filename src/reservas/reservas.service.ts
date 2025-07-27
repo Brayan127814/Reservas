@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException, UsePipes } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException, UseGuards, UsePipes } from '@nestjs/common';
 import { CreateReservaDto } from './dto/create-reserva.dto';
 import { UpdateReservaDto } from './dto/update-reserva.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -11,6 +11,11 @@ import { ESTADOHABITACION } from 'src/enums/estado-habitacion.enum';
 import { ESTADORESERVA } from 'src/enums/estado-reserva.enum';
 import { RelationIdAttribute } from 'typeorm/query-builder/relation-id/RelationIdAttribute';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { JwtAuthGuar } from 'src/auth/auth.guard';
+import { RolesGuard } from 'src/guards/roles.guard';
+import { Roles } from 'src/decorators/roles.decorators';
+import { todosLosPermisos } from 'src/helpers/permisoTotal';
+
 
 @Injectable()
 export class ReservasService {
@@ -23,6 +28,7 @@ export class ReservasService {
     private readonly huespedRepository: Repository<Huespedes>
 
   ) { }
+  //CREAR RESERVA
   async create(createReservaDto: CreateReservaDto, huespedID: number) {
     try {
       //Verificar que las habitaciones existan
@@ -43,7 +49,7 @@ export class ReservasService {
       if (!huesped) {
         throw new NotFoundException('Huesped no encontrado')
       }
- 
+
 
       //Cambiar el estado de las habitaciones a ocupadas
 
@@ -99,20 +105,23 @@ export class ReservasService {
 
   }
 
-  async findAll(huespeId: number): Promise<Reserva[]> {
+  async findAll(huespeId: number, rol: string): Promise<Reserva[]> {
 
     try {
-      const reservas = await this.reservaRepository.find({
 
+      if (todosLosPermisos(rol)) {
+        return this.reservaRepository.find({
+          relations:['rooms','huesped']
+        })
 
-        where: { huesped: { id: huespeId } },
-        relations: ['huesped', 'rooms']
+      } 
 
-
-
+      return await this.reservaRepository.find({
+        where:{
+          huesped:{id:huespeId}
+        },
+        relations:['rooms','huesped']
       })
-
-      return reservas
     } catch (error) {
       if (error instanceof HttpException) {
         throw error
@@ -125,24 +134,71 @@ export class ReservasService {
 
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} reserva`;
+
+  async findOne(id: number, huesped: number, rol: string): Promise<Reserva> {
+    try {
+      let reserva: Reserva | null = null
+      console.log('rol', rol)
+      if (rol === 'Admin' || rol === "recepcionista") {
+        reserva = await this.reservaRepository.findOne({
+          where: {
+            id
+          },
+          relations: ['rooms', 'huesped']
+        })
+
+      } else {
+        reserva = await this.reservaRepository.findOne({
+          where: {
+            id,
+            huesped: { id: huesped }
+          },
+          relations: ['rooms', 'huesped']
+        })
+
+
+      }
+
+
+
+
+      if (!reserva) {
+        throw new NotFoundException('Reserva no encontrada')
+      }
+
+      return reserva
+    } catch (error) {
+      console.log(error)
+      if (error instanceof HttpException) {
+        throw error
+      }
+      throw new HttpException('error interno del servidor', HttpStatus.INTERNAL_SERVER_ERROR)
+    }
   }
   //Actualizar datos de la reserva
-  async update(id: number, updateReservaDto: Partial<UpdateReservaDto>, huespedID: number) {
+  async update(id: number, updateReservaDto: Partial<UpdateReservaDto>, huespedID: number, rol: string) {
 
     try {
 
-      //buscar reservacion
+      let reserva: Reserva | null = null
+      if (todosLosPermisos(rol)) {
+        reserva = await this.reservaRepository.findOne({
+          where: {
+            id
+          },
+          relations: ['rooms', 'huesped']
+        })
+      } else {
+        reserva = await this.reservaRepository.findOne({
+          where: {
+            id,
+            huesped: { id: huespedID }
+          }
+        })
+      }
 
-      const reserva = await this.reservaRepository.findOne({
-        where: {
-          id,
-          huesped: { id: huespedID },
-          
-        },
-        relations:['rooms','huesped']
-      })
+
+
 
       if (!reserva) {
         throw new NotFoundException('Rserva no no encontrada')
@@ -191,7 +247,7 @@ export class ReservasService {
 
 
     } catch (error) {
-        console.log(error)
+      console.log(error)
       if (error instanceof HttpException) {
         throw error
       }
@@ -204,24 +260,37 @@ export class ReservasService {
   remove(id: number) {
     return `This action removes a #${id} reserva`;
   }
-  async cancelReservation(id: number, huespeId: number) {
+  async cancelReservation(id: number, huespeId: number, rol: string) {
     try {
-      const reservation = await this.reservaRepository.findOne({
-        where: {
-          id,
-          huesped: {
-            id: huespeId,
+      let reserva: Reserva | null = null
+      if (todosLosPermisos(rol)) {
+        reserva = await this.reservaRepository.findOne({
+          where: {
+            id,
+
+          }, relations: ['rooms', 'huesped']
+        })
+      } else {
+        reserva = await this.reservaRepository.findOne({
+          where: {
+            id,
+            huesped: {
+              id: huespeId,
+            },
           },
-        },
-        relations: ['huesped', 'rooms'],
-      });
+          relations: ['huesped', 'rooms'],
+        });
 
 
-      if (!reservation) {
+      }
+
+
+
+      if (!reserva) {
         throw new NotFoundException('Reserva no encontrada')
       }
 
-      if (reservation.estado !== ESTADORESERVA.CONFIRMADA) {
+      if (reserva.estado !== ESTADORESERVA.CONFIRMADA) {
         throw new BadRequestException('Solo se pueden cancelar reservas confirmadas')
       }
 
@@ -229,8 +298,8 @@ export class ReservasService {
         estado: ESTADORESERVA.CANCELADA
       })
 
-      if (reservation.rooms && reservation.rooms.length > 0) {
-        const roomIds = reservation.rooms.map(h => h.id)
+      if (reserva.rooms && reserva.rooms.length > 0) {
+        const roomIds = reserva.rooms.map(h => h.id)
         await this.roomRepository.update(roomIds, {
           estado: ESTADOHABITACION.DISPONIBLE
         })
@@ -258,14 +327,16 @@ export class ReservasService {
         },
         relations: ['rooms']
       })
+      // SI LA RESPUESTA ES UN ARREGLO VACIO TERMINAMOS
+      if (expiradas.length === 0) { return [] }
 
-      //CABIARA ESTADO DE LA RESEVA
+      //CABIAR ESTADO DE LA RESERVA
       for (let reserva of expiradas) {
-        reserva.estado = ESTADORESERVA.PENDIENTE
+        reserva.estado = ESTADORESERVA.CANCELADA
         await this.reservaRepository.save(reserva)
       }
 
-      if (expiradas.length === 0) { return [] }
+
 
 
       const roomID = expiradas.flatMap(r => r.rooms.map(room => room.id))
